@@ -8,15 +8,17 @@
 
 import Foundation
 import UIKit
+
 public protocol ImagePickerDelegate: class {
-    func didSelect(image: UIImage?)
+    func didSelect(image: UIImage , imageData : Data)
+    func errorWhileSelectingPhoto(error : String)
 }
 
 open class ImageProcessing : NSObject{
 
     private let pickerController: UIImagePickerController
     private weak var presentationController: UIViewController?
-    private weak var delegate: ImagePickerDelegate?
+    var delegate: ImagePickerDelegate?
 
     public init(presentationController: UIViewController, delegate: ImagePickerDelegate) {
         self.pickerController = UIImagePickerController()
@@ -32,26 +34,28 @@ open class ImageProcessing : NSObject{
     }
 
     public func present(from sourceView: UIView) {
-        self.pickerController.sourceType = .photoLibrary
+        self.pickerController.sourceType = .camera
         self.presentationController?.present(self.pickerController, animated: true)
     }
 
-    private func pickerController(_ controller: UIImagePickerController, didSelect image: UIImage?) {
+    private func pickerController(_ controller: UIImagePickerController, didSelect image: UIImage , imageData : Data) {
         controller.dismiss(animated: true, completion: nil)
-        self.delegate?.didSelect(image: image)
+        self.delegate?.didSelect(image: image, imageData: imageData)
     }
 }
 
 extension ImageProcessing: UIImagePickerControllerDelegate , UINavigationControllerDelegate{
 
     public func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        self.pickerController(picker, didSelect: nil)
+        picker.dismiss(animated: true, completion: nil)
     }
 
     public func imagePickerController(_ picker: UIImagePickerController,didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-        guard let image = info[.editedImage] as? UIImage else {
-            return self.pickerController(picker, didSelect: nil)
+        if let image = info[.editedImage] as? UIImage{
+            self.pickerController(picker, didSelect: image,imageData: image.jpegData(compressionQuality: 0.3)!)
+        }else{
+            self.delegate?.errorWhileSelectingPhoto(error: "Image not picked")
         }
-        self.pickerController(picker, didSelect: image)
+        
     }
 }
